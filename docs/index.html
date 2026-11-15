@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AZURA - SPHEREx Sky Movie</title>
+<style>
+  :root{--navy:#0A1F44;--azure:#3D8BFD;--ice:#BFE0FF;--bg:#05080f}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 system-ui,-apple-system,sans-serif;background:var(--bg);color:#dce6f5}
+  header{padding:56px 20px 40px;text-align:center;background:linear-gradient(180deg,#0A1F44 0%,#05080f 100%)}
+  header h1{margin:0 0 6px;font-size:30px;color:var(--ice);letter-spacing:.4px}
+  header p{margin:0;color:#8fa8c8}
+  .badge{display:inline-block;margin:14px 6px 0;padding:4px 12px;border:1px solid #2a5cb0;border-radius:20px;font-size:12px;color:var(--ice)}
+  main{max-width:960px;margin:0 auto;padding:32px 20px 60px}
+  h2{color:var(--ice);font-size:21px;margin:38px 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:18px}
+  .card{background:#0b1a38;border:1px solid #1e4fa8;border-radius:10px;padding:16px}
+  .card h3{margin:0 0 8px;font-size:15px;color:var(--azure)}
+  .card p{margin:0;font-size:13px;color:#b9c9e2}
+  .card a{color:var(--azure)}
+  #demo{background:#000;border:1px solid #1e4fa8;border-radius:10px;display:block;margin:16px auto;width:min(420px,90vw);aspect-ratio:1}
+  #demoInfo{text-align:center;color:#8fa8c8;font-size:12px}
+  .center{text-align:center}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+  th,td{border:1px solid #1e4fa8;padding:8px 10px;text-align:left}
+  th{background:#0b1a38;color:var(--ice)}
+  code,pre{background:#0b1a38;border-radius:6px;font:12.5px/1.5 Consolas,monospace}
+  code{padding:2px 6px}
+  pre{padding:14px;overflow:auto}
+  footer{text-align:center;padding:26px;color:#5f7ba6;font-size:12px;border-top:1px solid #12275a;margin-top:40px}
+  button{cursor:pointer;background:var(--azure);color:#fff;border:none;font-weight:700;padding:10px 22px;border-radius:6px;font-size:14px}
+  button:disabled{opacity:.5;cursor:wait}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AZURA &mdash; SPHEREx Sky Movie</h1>
+  <p>NASA Space Apps Challenge 2026 &middot; Planet X and SPHEREx &middot; Nigde Local Event &middot; Team AZURA</p>
+  <span class="badge">Vanilla HTML5 + JS</span>
+  <span class="badge">Python / Flask proxy</span>
+  <span class="badge">NASA / IPAC IRSA data</span>
+</header>
+
+<main>
+  <h2>Problem</h2>
+  <p>NASA'nin SPHEREx gorevi Mayis 2025'ten beri tum gokyuzunu 102 yakin infrared bandinda
+  haritaliyor ve bir milyardan fazla cismin goruntusunu uretiyor. Kuyruklu yildizlar, asteroitler,
+  yildizlar, kahverengi culer ve gezegenler goruntuler arasinda konum degisterek kendilerini
+  gosterir; ama bu veriyi kimse tek basina inceleyemez. Iste bu yuzden <b>herkesin iki goruntu
+  arasindaki hareketi saniyeler icinde gorebilecegi bir web araci</b> gerekiyor &mdash; tıpkı
+  Pluton'un 1930'da, iki plak arasindaki kayan ışık noktasiyla kesfedilmesi gibi.</p>
+
+  <h2>Cozum: Blink Movie</h2>
+  <p>Kullanici RA/Dec koordinati girer; arac NASA/IPAC IRSA'dan o konumu kaplayan tum SPHEREx
+  epoch'larini zaman sirasiyla ceker ve kucuk bir video gibi oynatir. Hareketli cisimler goz
+  onunde "yuzuyor". Yanina <b>Difference</b> modu (epoch N - epoch N-1) ekledik: kayan kaynak
+  dipol cift olarak belirir. Ucuncu asama olarak <b>Spectrum</b>: alti dedektor bandpass'i
+  uzerinden kaba bir dalga boyu grafigi.</p>
+
+  <h2>Canli Demo (tarayicida, sunucusuz)</h2>
+  <p class="center">Asagidaki animasyon, uygulamanin yaptigi isi birebir gosterir: sabit yildiz
+  alani + hareketli bir kaynak. Gercek uygulamada bu kareler NASA/IPAC IRSA'nin SPHEREx
+  spectral-image cutout servisinden gelir; burada ayni algoritmanin sunucusuz hali calisir.</p>
+  <canvas id="demo" width="384" height="384"></canvas>
+  <p id="demoInfo" class="center">Simulated SPHEREx epochs (client-side, no network)</p>
+  <p class="center"><button id="demoBtn" onclick="toggleDemo()">Pause</button></p>
+
+  <h2>Test Edilen Hedefler (challenge'in onerdikleri)</h2>
+  <table>
+    <tr><th>Hedef</th><th>RA (deg)</th><th>Dec (deg)</th><th>FOV</th><th>Neden?</th></tr>
+    <tr><td>Barnard's Star</td><td>269.4520</td><td>4.6933</td><td>0.5</td><td>Yuksek ozdevinim, klasik test</td></tr>
+    <tr><td>WISE 0855</td><td>133.7953</td><td>-7.2451</td><td>0.5</td><td>Hizli hareket eden kahverengi cuce (challenge metnindeki koordinatlar)</td></tr>
+    <tr><td>Epsilon Indi B</td><td>330.8040</td><td>-56.7860</td><td>0.4</td><td>Ikili kahverengi cuce</td></tr>
+    <tr><td>RW Aurigae</td><td>76.9850</td><td>30.4010</td><td>0.2</td><td>Değişken yildiz</td></tr>
+  </table>
+
+  <h2>Mimari</h2>
+  <pre>Browser (vanilla JS, Aladin Lite v3)
+   |  fetch /api/query?ra=&amp;dec=&amp;size=&amp;band=
+   v
+Flask proxy  (app.py, tek dosya)
+   |  TAP: spherex.artifact x spherex.plane (astroquery)
+   |  cutout: irsa.ipac.caltech.edu/&lt;uri&gt;?center=RA,Decd&amp;size=X
+   v
+NASA / IPAC IRSA  (SPHEREx DR1 + QR3, weekly ingest)</pre>
+
+  <h2>Klasorler</h2>
+  <div class="grid">
+    <div class="card"><h3>app.py</h3><p>Flask backend: TAP sorgusu, FITS &rarr; PNG (sqrt stretch), 3 katmanli cache (RAM / disk / tarayici), otomatik retry, her hata yolunda JSON.</p></div>
+    <div class="card"><h3>static/index.html</h3><p>Tek sayfa frontend: RA/Dec girisi, 4 preset hedef, blink oynatici, difference ve spectrum, URL parametreleriyle paylasim.</p></div>
+    <div class="card"><h3>docs/</h3><p>Veri kaynaklari, mimari notlar, veri atiflari ve bu statik tanitim sayfasi (GitHub Pages uzerinden yayinlanir).</p></div>
+    <div class="card"><h3>sprints/</h3><p>Scrum Master sprint raporlari (4 sprint): hedefler, tamamlanan/islemeyen isler, sorunlar, cozumler, katkilar, sonraki adimlar.</p></div>
+  </div>
+
+  <h2>Nasil Calisir?</h2>
+  <pre>git clone https://github.com/&lt;KULLANICI&gt;/azura-spherex-sky-movie.git
+cd azura-spherex-sky-movie
+pip install -r requirements.txt
+python app.py             # http://localhost:5000</pre>
+  <p>Tam kurulum ve deploy adimlari icin <a href="https://github.com/&lt;KULLANICI&gt;/azura-spherex-sky-movie" style="color:var(--azure)">GitHub deposuna</a> bakin.</p>
+
+  <h2>Veri Kaynaklari</h2>
+  <div class="grid">
+    <div class="card"><h3>IRSA SPHEREx Archive</h3><p><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">irsa.ipac.caltech.edu/Missions/spherex.html</a></p></div>
+    <div class="card"><h3>Cutout Service</h3><p><a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/cutout_tool.html">irsa.ipac.caltech.edu/data/SPHEREx/docs/cutout_tool.html</a></p></div>
+    <div class="card"><h3>SPHEREx Mission</h3><p><a href="https://spherex.caltech.edu/">spherex.caltech.edu</a></p></div>
+    <div class="card"><h3>TAP Tutorial</h3><p><a href="https://github.com/Caltech-IPAC/irsa-tutorials">Caltech-IPAC/irsa-tutorials</a></p></div>
+  </div>
+
+  <footer>
+    This research has made use of the NASA/IPAC Infrared Science Archive, which is funded by NASA and operated by Caltech.<br>
+    AZURA &middot; NASA Space Apps Challenge 2026 &middot; MIT License
+  </footer>
+</main>
+
+<script>
+/* Client-side blink demo: noise + static field stars + moving source.
+   Mirrors app.py's _demo_frame_png so the pipeline logic is visible. */
+const S = 384;
+const cv = document.getElementById('demo'), g = cv.getContext('2d');
+let frame = 0, playing = true, timer = null;
+
+function renderDemo(){
+  const img = g.createImageData(S, S);
+  for(let y=0; y<S; y++){
+    for(let x=0; x<S; x++){
+      let v = 50 + (Math.random()*12 - 6);
+      const stars = [[0.20,0.30,3.0],[0.70,0.15,3.0],[0.85,0.80,3.0],[0.35,0.75,3.0]];
+      for(const [sx,sy,sg] of stars){
+        const dx = x - sx*S, dy = y - sy*S;
+        v += 900 * Math.exp(-(dx*dx+dy*dy)/(2*sg*sg));
+      }
+      const t = frame/11;
+      const mx = x - (0.25 + 0.50*t)*S, my = y - (0.25 + 0.35*t)*S;
+      v += 2200 * Math.exp(-(mx*mx+my*my)/(2*2.5*2.5));
+      v = Math.max(0, Math.min(255, Math.sqrt(v/255)*255));
+      const p = (y*S+x)*4;
+      img.data[p]=v*0.85; img.data[p+1]=v*0.92; img.data[p+2]=v; img.data[p+3]=255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  frame = (frame+1) % 12;
+}
+function toggleDemo(){
+  if(playing){ clearInterval(timer); playing=false; document.getElementById('demoBtn').textContent='Play'; }
+  else { timer=setInterval(renderDemo, 400); playing=true; document.getElementById('demoBtn').textContent='Pause'; }
+}
+renderDemo(); renderDemo();
+timer = setInterval(renderDemo, 400);
+</script>
+</body>
+</html>

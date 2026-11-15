@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Calisma aninda uretilen cache
+data/cache/
+server.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Buyuk veri dosyalari (gerekirse LFS ile ekleyin)
+data/*.fits

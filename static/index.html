@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AZURA - SPHEREx Sky Movie</title>
+<link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css">
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.js" charset="utf-8"></script>
+<style>
+  :root{--navy:#0A1F44;--azure:#3D8BFD;--ice:#BFE0FF;--bg:#05080f}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:#dce6f5;
+       display:flex;overflow:hidden}
+  /* ---------- optional Aladin sky background ---------- */
+  #aladin{position:fixed;inset:0;z-index:0;opacity:.55}
+  /* ---------- left control sidebar ---------- */
+  #panel{z-index:2;width:400px;min-width:340px;height:100vh;overflow:auto;
+    background:rgba(10,31,68,.94);border-right:1px solid #1e4fa8;
+    padding:20px;backdrop-filter:blur(6px)}
+  h1{margin:0 0 4px;font-size:22px;color:var(--ice);letter-spacing:.3px}
+  small{color:#8fa8c8}
+  label{display:block;margin:10px 0 3px;font-weight:600;font-size:12px}
+  input,select,button{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #2a5cb0;
+    background:#0b1a38;color:#e6eefc;font-size:13px}
+  button{cursor:pointer;background:var(--azure);border:none;font-weight:700;margin-top:10px}
+  button:disabled{opacity:.5;cursor:wait}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  #presets button{margin:4px 0 0;background:#12306b;font-weight:400;font-size:12px}
+  #status{min-height:20px;color:#ffd479;font-size:12px;margin-top:8px}
+  /* ---------- main viewer area ---------- */
+  #stage{flex:1;height:100vh;display:flex;flex-direction:column;align-items:center;
+         justify-content:center;padding:24px;position:relative;z-index:1}
+  #frame{background:#000;border:1px solid #1e4fa8;border-radius:10px;
+         width:min(78vh, calc(100vw - 480px));aspect-ratio:1/1;display:block}
+  #scrub{width:min(78vh, calc(100vw - 480px));margin-top:12px}
+  #controls{display:flex;gap:10px;margin-top:12px;width:min(78vh, calc(100vw - 480px))}
+  #frameInfo{margin-top:8px;text-align:center}
+  #below{display:flex;gap:16px;width:min(78vh, calc(100vw - 480px));margin-top:14px}
+  #below>div{flex:1;display:none}
+  #below img{width:100%;border-radius:8px;background:#000;display:block}
+  .cardTitle{font-size:11px;color:#8fa8c8;margin:0 0 6px;font-weight:600}
+  @media (max-width: 900px){
+    body{flex-direction:column;overflow:auto}
+    #panel{width:100%;min-width:0;height:auto}
+    #stage{height:auto}
+    #frame,#scrub,#controls,#below{width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div id="aladin"></div>
+
+<div id="panel">
+  <h1>AZURA - SPHEREx Sky Movie</h1>
+  <small>NASA Space Apps 2026 &middot; Planet X &amp; SPHEREx</small>
+
+  <label>Preset targets (high proper motion, wide FOV)</label>
+  <div id="presets">
+    <button onclick="preset('Barnard Star',269.4520,4.6933,0.5)">Barnard's Star</button>
+    <button onclick="preset('WISE 0855',133.7953,-7.2451,0.5)">WISE 0855 (brown dwarf)</button>
+    <button onclick="preset('Epsilon Indi B',330.8040,-56.7860,0.4)">Epsilon Indi B</button>
+    <button onclick="preset('RW Aurigae',76.9850,30.4010,0.2)">RW Aurigae (variable star)</button>
+  </div>
+
+  <div class="row">
+    <div><label>RA (deg)</label><input id="ra" type="number" step="0.0001" value="269.4520"></div>
+    <div><label>Dec (deg)</label><input id="dec" type="number" step="0.0001" value="4.6933"></div>
+  </div>
+  <div class="row">
+    <div><label>FOV (deg, cutout size)</label><input id="size" type="number" step="0.05" value="0.5" min="0.05" max="1.5"></div>
+    <div><label>Detector band</label>
+      <select id="band">
+        <option>SPHEREx-D1</option><option selected>SPHEREx-D2</option>
+        <option>SPHEREx-D3</option><option>SPHEREx-D4</option>
+        <option>SPHEREx-D5</option><option>SPHEREx-D6</option>
+      </select></div>
+  </div>
+
+  <button id="goBtn" onclick="loadMovie()">Fetch epochs and build movie</button>
+  <div id="status"></div>
+</div>
+
+<div id="stage">
+  <canvas id="frame" width="768" height="768"></canvas>
+  <input id="scrub" type="range" min="0" max="0" value="0" step="1">
+  <div id="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="toggleDiff()">Difference</button>
+    <button onclick="loadSpectrum()">Spectrum</button>
+  </div>
+  <small id="frameInfo"></small>
+  <div id="below">
+    <div id="diffWrap">
+      <p class="cardTitle">DIFFERENCE (current minus previous epoch) - moving objects appear as dipole pairs</p>
+      <img id="diffFrame" alt="difference image">
+    </div>
+    <div id="specWrap">
+      <p class="cardTitle">CENTER-PIXEL FLUX vs WAVELENGTH (crude spectrum, all 6 detectors)</p>
+      <img id="specImg" alt="spectrum" style="background:#fff">
+    </div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   v3 - fixes:
+   - TypeError 'reading time': every accessor is now guarded; frames
+     are reset on each query; empty/failed queries never crash.
+   - layout: large centered viewer, sidebar controls, responsive.
+   - frame cache: all frames preloaded once; replay/seek = instant.
+------------------------------------------------------------------ */
+let aladin, frames = [], imgCache = [], idx = 0, playing = false, timer = null, diffOn = false;
+const $ = id => document.getElementById(id);
+const API = location.origin.includes(':8000') ? '' : location.origin;
+
+window.onload = () => {
+  try {
+    aladin = A.aladin('#aladin', {target:'269.452 4.6933', fov:2, survey:'P/DSS2/color', showSettings:false, showFrame:false, showZoomControl:false, showLayersControl:false, showGotoControl:false, showShareControl:false});
+  } catch(e) { /* sky background is optional; the app works without it */ }
+};
+
+function preset(name, ra, dec, size){
+  $('ra').value = ra; $('dec').value = dec; $('size').value = size;
+  if(aladin) aladin.goto(ra, dec);
+  const u = new URL(location); u.searchParams.set('ra',ra);
+  u.searchParams.set('dec',dec); u.searchParams.set('fov',size);
+  history.replaceState(null,'',u);
+  loadMovie();
+}
+
+const cutoutURL = i => (frames[i] && frames[i].uri)
+  ? `${API}/api/cutout?uri=${encodeURIComponent(frames[i].uri)}`
+  : '';
+
+async function loadMovie(){
+  const btn = $('goBtn'); btn.disabled = true;
+  stop();
+  frames = []; imgCache = []; idx = 0;          // hard reset - no stale state
+  $('status').textContent = 'Querying IRSA TAP for SPHEREx epochs...';
+  try{
+    const q = `ra=${$('ra').value}&dec=${$('dec').value}&size=${$('size').value}&band=${$('band').value}&limit=60`;
+    const r = await fetch(`${API}/api/query?${q}`);
+    const ct = r.headers.get('content-type') || '';
+    if(!ct.includes('application/json')) throw new Error(`server returned ${r.status}`);
+    const d = await r.json();
+    if(d.ok === false){ $('status').textContent = d.error || 'Query failed.'; btn.disabled = false; return; }
+    if(d.demo){
+      $('status').textContent = 'Demo mode: IRSA unreachable, showing cached frames.';
+    } else if(!d.frames || !d.frames.length){
+      $('status').textContent = d.error || 'No SPHEREx images cover this position yet.';
+      btn.disabled = false; return;
+    } else {
+      $('status').textContent = `${d.frames.length} epochs found. Preloading frames...`;
+    }
+    frames = d.frames || [];
+    imgCache = new Array(frames.length).fill(null);
+    $('scrub').max = Math.max(frames.length - 1, 0);
+    $('scrub').value = 0;
+    if(!frames.length){ btn.disabled = false; return; }
+
+    // preload ALL frames once, with progress; first frame shows immediately
+    let done = 0;
+    await Promise.all(frames.map((f,i) => new Promise(res => {
+      const im = new Image();
+      im.onload = im.onerror = () => { imgCache[i] = im; done++;
+        $('status').textContent = `Preloading frames... ${done}/${frames.length}`;
+        if(done === 1 && frames[i]) draw(i);
+        res(); };
+      if(!frames[i] || !frames[i].uri){ res(); return; }   // skip broken entries
+      im.src = cutoutURL(i);
+    })));
+
+    $('status').textContent = `${frames.length} epochs loaded - playing.`;
+    draw(0); play();
+  }catch(e){ $('status').textContent = 'Error: ' + e; }
+  btn.disabled = false;
+}
+
+function draw(i){
+  if(!frames.length || !frames[i]) return;      // guard - fixes the TypeError
+  const c = $('frame'), g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0,0,c.width,c.height);
+  const im = imgCache[i];
+  if(im && im.complete && im.naturalWidth) g.drawImage(im, 0, 0, c.width, c.height);
+  idx = i;
+  $('frameInfo').textContent = `Epoch ${i+1}/${frames.length} - ${frames[i].time} (UTC)`;
+  $('scrub').value = i;
+  if(diffOn && i > 0){
+    $('diffWrap').style.display = 'block';
+    $('diffFrame').src = `${API}/api/difference?uri1=${encodeURIComponent(frames[i-1].uri)}&uri2=${encodeURIComponent(frames[i].uri)}`;
+  } else $('diffWrap').style.display = 'none';
+}
+
+function show(i){ if(frames.length) draw((i + frames.length) % frames.length); }
+
+function play(){
+  if(playing || !frames.length) return;
+  if(imgCache.some(im => !im)){ $('status').textContent = 'Still preloading...'; return; }
+  playing = true; $('playBtn').textContent = 'Pause';
+  timer = setInterval(() => show(idx+1), 700);
+}
+function stop(){ clearInterval(timer); timer = null; playing = false; }
+function togglePlay(){
+  if(playing){ stop(); $('playBtn').textContent = 'Play'; }
+  else play();
+}
+function toggleDiff(){
+  diffOn = !diffOn;
+  if(diffOn) $('specWrap').style.display = 'none';
+  show(idx);
+}
+async function loadSpectrum(){
+  $('specWrap').style.display = 'block';
+  $('diffWrap').style.display = 'none'; diffOn = false;
+  try{
+    const r = await fetch(`${API}/api/spectrum?ra=${$('ra').value}&dec=${$('dec').value}&size=0.05`);
+    const ct = r.headers.get('content-type') || '';
+    if(!ct.includes('application/json')) throw new Error(`server returned ${r.status}`);
+    const d = await r.json();
+    if(d.ok === false || !d.points || !d.points.length){
+      $('specImg').style.display = 'none';
+      $('frameInfo').textContent = 'Spectrum: no data. ' + (d.error || '');
+      return;
+    }
+    $('specImg').style.display = 'block';
+    drawSpec(d.points);
+  }catch(e){ $('specWrap').style.display = 'none'; $('frameInfo').textContent = 'Spectrum error: ' + e; }
+}
+function drawSpec(pts){
+  const c = document.createElement('canvas'); c.width = 600; c.height = 260;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,600,260);
+  const xs = pts.map(p=>p.wavelength_um), ys = pts.map(p=>p.flux);
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  const px = w => 50 + (w-x0)/((x1-x0)||1)*530, py = f => 220 - (f-y0)/((y1-y0)||1)*180;
+  g.strokeStyle = '#1e4fa8'; g.lineWidth = 2; g.beginPath();
+  pts.forEach((p,i)=> i ? g.lineTo(px(p.wavelength_um),py(p.flux)) : g.moveTo(px(p.wavelength_um),py(p.flux)));
+  g.stroke();
+  g.fillStyle = '#0A1F44'; g.font = '12px monospace';
+  pts.forEach(p=>{ g.beginPath(); g.arc(px(p.wavelength_um),py(p.flux),3,0,7); g.fill(); });
+  g.fillText(x0.toFixed(2), 40, 240);
+  g.fillText(x1.toFixed(2) + ' um', 540, 240);
+  g.fillText(y1.toExponential(1), 2, 20);
+  $('specImg').src = c.toDataURL();
+}
+$('scrub').addEventListener('input', e => { stop(); $('playBtn').textContent = 'Play'; show(+e.target.value); });
+window.addEventListener('error', ev => {   // last-resort guard: show, never blank-crash
+  if(ev.message && ev.message.includes('reading')) { ev.preventDefault(); stop(); }
+});
+window.addEventListener('resize', () => { if(frames.length) draw(idx); });   // keep render crisp on resize
+
+// optional Aladin background behind the stage (kept minimal, loads lazily)
+window.addEventListener('DOMContentLoaded', () => {
+  const p = new URLSearchParams(location.search);
+  if (p.get('ra') && p.get('dec')) {
+    $('ra').value = p.get('ra'); $('dec').value = p.get('dec');
+    if (p.get('fov')) $('size').value = p.get('fov');
+    if (p.get('band')) $('band').value = p.get('band');
+    loadMovie();
+  } else {
+    loadMovie();  // default Barnard's Star on open
+  }
+});
+</script>
+</body>
+</html>
