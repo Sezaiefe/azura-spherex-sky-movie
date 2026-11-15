@@ -14,7 +14,7 @@
 | Alperen Bektaş | `@alpbktss` | Team Member | Registration only | 0% |
 | Emre Çeltikoğlu | `@emre_bok` | Team Member | Registration only | 0% |
 
-> *Note: All three names, handles, and the "Team Owner" badge reflect the official Space Apps team roster. Every commit, technical artifact, and report was executed by `@sezaief`. Alperen Bektaş and Emre Çeltikoğlu are listed on the official team registration only, with zero contribution (0%) to code, research, documentation, or sprint tasks.*
+> *Note: All three names, handles, and the "Team Owner" badge reflect the official Space Apps team roster. Every commit, technical artifact, and report was executed by `@sezaief`. `@alpbktss` and `@emre_bok` are listed on the official team registration only, with zero contribution (0%) to code, research, documentation, or sprint tasks.*
 
 ---
 
